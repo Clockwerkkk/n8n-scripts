@@ -1,0 +1,1254 @@
+{
+  "name": "Product visualization video pipeline (adapted from n8n community template)",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.video.url }}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "f9b68c71-d46d-4b19-bb5f-ae615da9c7e0",
+      "name": "Download Final Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        860,
+        528
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "path": "generate-ad",
+        "formTitle": "Generate ads",
+        "formDescription": "Upload photo and description",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "photo1",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "photo2",
+              "fieldType": "file",
+              "multipleFiles": false
+            },
+            {
+              "fieldLabel": "product description",
+              "fieldType": "textarea",
+              "placeholder": "Describe the product"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4fe6bbc4-bdf2-4f6b-a199-bd76a015d285",
+      "name": "Photo Upload Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "position": [
+        -1008,
+        48
+      ],
+      "webhookId": "animate-photo-form",
+      "typeVersion": 2.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "65f5780e-7894-4d4c-b1d7-b6b922aceebe",
+              "name": "number_of_images",
+              "type": "number",
+              "value": 1
+            },
+            {
+              "id": "e6d64db7-8c79-4f8f-96bf-edbc1faa365d",
+              "name": "size_of_image",
+              "type": "string",
+              "value": "1024x1024"
+            },
+            {
+              "id": "5614f0f0-92d2-4a42-98a7-401f43308b55",
+              "name": "openai_image_model",
+              "type": "string",
+              "value": "gemini-25-flash-image"
+            },
+            {
+              "id": "9ab52e7d-a777-4857-96bd-ae9e06317e54",
+              "name": "format_image",
+              "type": "string",
+              "value": "webp"
+            },
+            {
+              "id": "a7d62af0-baf3-4349-abe9-a75b91edc3f2",
+              "name": "imgbb_api_key",
+              "type": "string",
+              "value": "add_imgbb_api_key"
+            },
+            {
+              "id": "13789e95-b7c3-4952-afaa-5b86e212b225",
+              "name": "prompt-image-edit",
+              "type": "string",
+              "value": "=Place the painting in the room on the back wall, respecting the painting perfectly and the background room and the camera frame in the photo of the room."
+            },
+            {
+              "id": "fb657b62-be6f-4d12-a2e5-884862394515",
+              "name": "prompt-image-to-video",
+              "type": "string",
+              "value": "=Camera pan right and gentle truck/dolly right for the whole clip; the painting stays centered and in focus; reveal the right edge and frame depth; camera height aligned to painting center, medium-wide shot, 35 mm lens, soft gallery lighting; straight vertical lines, natural slight motion blur; no zoom"
+            },
+            {
+              "id": "b02c0f9f-00a4-513d-980e-6086c1e93172",
+              "name": "telegram_chat_id",
+              "value": "REPLACE_WITH_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "d269f1d7-9c37-5a04-97a5-f8c8f261b9b3",
+              "name": "sheet_document_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "579e7985-f07a-56de-a583-d4a9f928b37a",
+              "name": "sheet_tab_name",
+              "value": "Run Log",
+              "type": "string"
+            },
+            {
+              "id": "708ef1c2-b0ee-500b-b3cd-793bb932ae94",
+              "name": "poll_max_attempts",
+              "value": 40,
+              "type": "number"
+            },
+            {
+              "id": "3bb630c9-6f7e-5342-ae5d-1e123345fa22",
+              "name": "min_video_bytes",
+              "value": 50000,
+              "type": "number"
+            },
+            {
+              "id": "1cf3a7a6-803c-51d8-8e2d-9b40303b2664",
+              "name": "max_video_bytes",
+              "value": 104857600,
+              "type": "number"
+            },
+            {
+              "id": "94f51616-a151-5c43-933a-85a8979433e9",
+              "name": "estimated_cost_usd",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6e9fa8f8-1721-46ad-bd0a-bf3d771ec944",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -840,
+        208
+      ],
+      "typeVersion": 3.4,
+      "notes": "Prompts, API vars, limits and notification settings in one place. Polling: Wait i2v = 30 s x poll_max_attempts (40) = about 20 min max. estimated_cost_usd is filled by hand from FAL/Gemini pricing.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "photo1"
+            },
+            {
+              "name": "key",
+              "value": "={{ $json.imgbb_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0a81c771-f94b-4eb0-ade5-36d8775d4b21",
+      "name": "Upload Original Image to imgbb",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -192,
+        -16
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.2,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Separate Image Outputs').item.json.url }}",
+        "options": {}
+      },
+      "id": "3fe4ba3a-775a-4f02-9486-69bcb26a50ff",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        464,
+        32
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fal.run/fal-ai/gemini-25-flash-image/edit",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"prompt\":\"{{ $('Config').item.json['prompt-image-edit'] }}\",\"image_urls\":[\"{{ $('Upload Original Image to imgbb').item.json.data.url }}\",\"{{ $('Upload Original Image to imgbb1').item.json.data.url }}\"],\"num_images\":{{ $('Config').item.json.number_of_images }}}",
+        "options": {}
+      },
+      "id": "214648ba-ad89-4871-8155-4985da2c7f6d",
+      "name": "Gemini 2.5 Flash - Generate Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        128,
+        32
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "images",
+        "options": {}
+      },
+      "id": "75272a7e-226f-449b-bcc1-b31896cf126a",
+      "name": "Separate Image Outputs",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        288,
+        32
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((i)=>({json:{url: i.json.url},binary:{photo2:i.binary.data}}));"
+      },
+      "id": "861e620e-4c46-4349-bac6-0e99d27ae391",
+      "name": "Rename to photo",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        640,
+        32
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "photo2"
+            },
+            {
+              "name": "key",
+              "value": "={{ $('Config').item.json.imgbb_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "80d148a8-836d-40ee-a04d-cd4fa49744c0",
+      "name": "Upload Image to imgbb",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        800,
+        32
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.2,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://queue.fal.run/fal-ai/wan/v2.2-a14b/image-to-video",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"image_url\":\"{{ $json.data.url }}\",\"prompt\":\"{{ $('Config').item.json['prompt-image-to-video'] }}\",\"num_frames\":96,\"frames_per_second\":24,\"resolution\":\"480p\"}",
+        "options": {}
+      },
+      "id": "9d7333b5-1ab9-4fe9-8e86-9eee96a4fa0e",
+      "name": "FAL WAN i2v (Queue)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -352,
+        544
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "f1e2419b-3f03-40f3-9ea0-5caa402c29ff",
+      "name": "Wait i2v",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -128,
+        544
+      ],
+      "webhookId": "wan-i2v-wait-2",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/wan/requests/{{ $json.request_id }}/status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "4fd35296-966c-403c-9074-d70a452abe4e",
+      "name": "FAL WAN i2v (status)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        32,
+        544
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "animation-completed",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "COMPLETED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1dc2bc6a-267b-43bc-b6f6-6febeae520e3",
+      "name": "Animation Completed?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        412,
+        544
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "url": "=https://queue.fal.run/fal-ai/wan/requests/{{ $json.request_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "b8e0514d-ee74-465d-b369-b2f5e6a659ce",
+      "name": "FAL WAN i2v (Result)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        668,
+        528
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "35bbe857-d51f-415e-b596-380e6201eb1b",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -496,
+        64
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "cf2dbb9d-67ba-4fcc-82de-996994cd98e2",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -16,
+        32
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgbb.com/1/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "photo2"
+            },
+            {
+              "name": "key",
+              "value": "={{ $('Config').item.json.imgbb_api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26bdf7bf-a334-4307-b92d-570bf83aaf34",
+      "name": "Upload Original Image to imgbb1",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -192,
+        160
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.2,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {},
+      "id": "599e2aa2-9ad0-487b-8c3a-a26d68395796",
+      "name": "Upload Post",
+      "type": "n8n-nodes-upload-post.uploadPost",
+      "position": [
+        1508,
+        528
+      ],
+      "typeVersion": 1,
+      "credentials": {},
+      "notes": "NOT configured in the source export: set user, platform and credentials before use.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Guards the FAL polling loop: the original loop could spin forever if the job never completed.\nconst cfg = $('Config').first().json;\nconst attempt = $runIndex + 1;\nconst status = String($json.status || '').toUpperCase();\n\nif (['FAILED', 'ERROR', 'CANCELLED', 'CANCELED'].includes(status)) {\n  throw new Error(`FAL job ended with status ${status}`);\n}\nif (status !== 'COMPLETED' && attempt >= Number(cfg.poll_max_attempts)) {\n  throw new Error(`FAL job not completed after ${attempt} status checks (last status: ${status || 'unknown'})`);\n}\nreturn { json: { ...$json, poll_attempt: attempt } };"
+      },
+      "id": "7d1ffe58-f467-52fc-884f-3c89c943748e",
+      "name": "Poll Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        212,
+        544
+      ],
+      "notes": "Stops the loop on FAILED/ERROR or after poll_max_attempts checks. The error goes to the Error Trigger.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Output quality gate: is the downloaded file really a video of a sane size?\nconst cfg = $('Config').first().json;\nconst item = $input.first();\nconst keys = Object.keys(item.binary || {});\nif (!keys.length) throw new Error('Quality check failed: the download returned no file');\n\nconst key = item.binary.data ? 'data' : keys[0];\nconst mime = String(item.binary[key].mimeType || '');\nif (!mime.startsWith('video/')) {\n  throw new Error(`Quality check failed: expected a video file, got \"${mime || 'unknown type'}\"`);\n}\n\nconst buf = await this.helpers.getBinaryDataBuffer(0, key);\nconst min = Number(cfg.min_video_bytes);\nconst max = Number(cfg.max_video_bytes);\nif (buf.length < min) throw new Error(`Quality check failed: video is too small (${buf.length} < ${min} bytes)`);\nif (buf.length > max) throw new Error(`Quality check failed: video is too large (${buf.length} > ${max} bytes)`);\n\nlet videoUrl = '';\ntry { videoUrl = $('FAL WAN i2v (Result)').first().json.video.url || ''; } catch (e) { videoUrl = ''; }\n\nreturn [{ json: { ...item.json, video_url: videoUrl, video_bytes: buf.length, video_mime: mime }, binary: item.binary }];"
+      },
+      "id": "bc40b0d7-a47b-51bc-af0e-a8b12c92c3d0",
+      "name": "Video Quality Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5f2d17fd-9fb0-536f-b733-8e69a1f67116",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "fca78bac-e8aa-5809-8877-16a670495073",
+              "name": "workflow",
+              "value": "product_visualization_video_pipeline",
+              "type": "string"
+            },
+            {
+              "id": "0363b042-4dd1-55e0-b407-e2edff49790d",
+              "name": "run_status",
+              "value": "published",
+              "type": "string"
+            },
+            {
+              "id": "1ea70d91-7959-5873-8ac1-f28aadcf2888",
+              "name": "product_description",
+              "value": "={{ String($('Photo Upload Form').first().json['product description'] || '').slice(0, 300) }}",
+              "type": "string"
+            },
+            {
+              "id": "5cd03b81-131c-5d05-8f0d-ad74a82c6dd4",
+              "name": "video_url",
+              "value": "={{ $('Video Quality Check').first().json.video_url }}",
+              "type": "string"
+            },
+            {
+              "id": "45cf7c31-652f-5c84-995b-bfb0004af515",
+              "name": "video_bytes",
+              "value": "={{ String($('Video Quality Check').first().json.video_bytes) }}",
+              "type": "string"
+            },
+            {
+              "id": "5590ad1d-c43a-5087-9684-cd382ea5c759",
+              "name": "error",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "15631792-d1ac-5323-82a4-e1f11248c8de",
+              "name": "estimated_cost_usd",
+              "value": "={{ $('Config').first().json.estimated_cost_usd }}",
+              "type": "string"
+            },
+            {
+              "id": "ee169b03-12b2-5d3c-998a-ca0d021a37d0",
+              "name": "execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "b4b0c5a4-1b4c-5524-9ca6-1f0250748cab",
+      "name": "Build Run Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1500,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_document_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.sheet_tab_name }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "workflow": "={{ $json.workflow }}",
+            "run_status": "={{ $json.run_status }}",
+            "product_description": "={{ $json.product_description }}",
+            "video_url": "={{ $json.video_url }}",
+            "video_bytes": "={{ $json.video_bytes }}",
+            "error": "={{ $json.error }}",
+            "estimated_cost_usd": "={{ $json.estimated_cost_usd }}",
+            "execution_id": "={{ $json.execution_id }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "b45f917f-7e25-511a-9856-1fbf43ed322f",
+      "name": "Log Run",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1720,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Sheet columns (row 1): timestamp, workflow, run_status, product_description, video_url, video_bytes, error, estimated_cost_usd, execution_id",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "08205793-7de9-537f-945c-c8a879256ee4",
+              "name": "text",
+              "value": "={{ `🎬 Product video published (${(Number($('Build Run Row').first().json.video_bytes) / 1048576).toFixed(1)} MB)\\n${$('Build Run Row').first().json.video_url}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "80832bf2-8155-5fae-859b-9047e4958d50",
+      "name": "Compose Run Notification",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1940,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Config').first().json.telegram_chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "dc31235b-4c56-5276-abec-ce80c67c9d1d",
+      "name": "Telegram Run Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2160,
+        528
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram Bot (BotFather token)"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "f588da06-b66a-5ad7-b176-2af5ba74ea09",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        900
+      ],
+      "notes": "Fires only if this workflow is set as its own Error Workflow (Settings).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fdc129b4-8323-50f5-865b-d3d591d5ee35",
+              "name": "telegram_chat_id",
+              "value": "REPLACE_WITH_ADMIN_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "670a06f2-2065-50a3-9d8a-6ada4812f30f",
+              "name": "sheet_document_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "b3e6f548-aa82-5d6e-8507-ad77eaa79256",
+              "name": "sheet_tab_name",
+              "value": "Run Log",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "f2183c10-d29d-5c94-827e-8584b46bf41e",
+      "name": "Error Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -788,
+        900
+      ],
+      "notes": "Error runs cannot read the main Config node, so these 3 values are mirrored here. Keep them identical to Config.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aafa80bf-6b89-529a-b50b-64f8e51821a1",
+              "name": "text",
+              "value": "={{ `🚨 Product video pipeline failed at node \"${$json.execution.lastNodeExecuted}\": ${String($json.execution.error.message).slice(0, 500)}\\nExecution: ${$json.execution.id}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "04572c76-4c18-5392-9538-17ee52fa3dc9",
+      "name": "Compose Error Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -568,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Error Config').first().json.telegram_chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "5826a953-11d8-5baa-b148-d0a306030bd9",
+      "name": "Telegram Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -348,
+        820
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram Bot (BotFather token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d633e7d-2a97-5582-a9c3-e963807bb207",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "2bc0d7da-4a49-5822-a7b7-2dbdbef13db7",
+              "name": "workflow",
+              "value": "product_visualization_video_pipeline",
+              "type": "string"
+            },
+            {
+              "id": "05aca8cd-6a96-51eb-b705-f9c533ac39d0",
+              "name": "run_status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "44baadbb-f9fa-58e6-a961-30e1386732eb",
+              "name": "product_description",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "01c2e7af-b399-5bee-a46e-f4d5a2f8a404",
+              "name": "video_url",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "4fa7db8c-1482-5ffa-90a5-f19f132b8d18",
+              "name": "video_bytes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "7bd50335-cacd-5b35-8ff4-101ed42ac6c7",
+              "name": "error",
+              "value": "={{ String($json.execution.error.message).slice(0, 500) }}",
+              "type": "string"
+            },
+            {
+              "id": "f01c458a-ef4d-5cf7-8298-14eb383730a6",
+              "name": "estimated_cost_usd",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "07ee9652-0c28-58b4-ae80-b1b3d1c875ce",
+              "name": "execution_id",
+              "value": "={{ $json.execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "e8a5576c-3574-572a-a5e9-f392693af565",
+      "name": "Build Error Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -568,
+        980
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Error Config').first().json.sheet_document_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Error Config').first().json.sheet_tab_name }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "workflow": "={{ $json.workflow }}",
+            "run_status": "={{ $json.run_status }}",
+            "product_description": "={{ $json.product_description }}",
+            "video_url": "={{ $json.video_url }}",
+            "video_bytes": "={{ $json.video_bytes }}",
+            "error": "={{ $json.error }}",
+            "estimated_cost_usd": "={{ $json.estimated_cost_usd }}",
+            "execution_id": "={{ $json.execution_id }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "7cfa7866-c702-5bcb-9f18-e97b92599602",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -348,
+        980
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Sheet columns (row 1): timestamp, workflow, run_status, product_description, video_url, video_bytes, error, estimated_cost_usd, execution_id",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "content": "## What I changed vs. the n8n community template\n1. One `Config` node (prompts, API vars, limits, chat id, sheet id) instead of two Set nodes.\n2. Retries on all external HTTP calls (FAL queue submit: 2 tries to avoid duplicate paid jobs).\n3. `Poll Guard`: the original status loop could run forever; now it stops on FAILED or after N checks.\n4. `Video Quality Check`: file exists, is video/*, size within limits.\n5. `Log Run` to Google Sheets, Telegram notification, Error Trigger -> Telegram + sheet.\n\nSetup: credentials (FAL header auth, Upload-Post, Telegram, Google Sheets), Config + Error Config values, Settings -> Error Workflow = this workflow.",
+        "height": 300,
+        "width": 700,
+        "color": 4
+      },
+      "id": "0b496618-96a1-542c-a375-67468c2af7b4",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        -260
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Upload Original Image to imgbb",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload Original Image to imgbb1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Gemini 2.5 Flash - Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait i2v": {
+      "main": [
+        [
+          {
+            "node": "FAL WAN i2v (status)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Rename to photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Rename to photo": {
+      "main": [
+        [
+          {
+            "node": "Upload Image to imgbb",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Photo Upload Form": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAL WAN i2v (Queue)": {
+      "main": [
+        [
+          {
+            "node": "Wait i2v",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Animation Completed?": {
+      "main": [
+        [
+          {
+            "node": "FAL WAN i2v (Result)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait i2v",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAL WAN i2v (Result)": {
+      "main": [
+        [
+          {
+            "node": "Download Final Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAL WAN i2v (status)": {
+      "main": [
+        [
+          {
+            "node": "Poll Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image to imgbb": {
+      "main": [
+        [
+          {
+            "node": "FAL WAN i2v (Queue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separate Image Outputs": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Original Image to imgbb": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Original Image to imgbb1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Gemini 2.5 Flash - Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Separate Image Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Guard": {
+      "main": [
+        [
+          {
+            "node": "Animation Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Final Video": {
+      "main": [
+        [
+          {
+            "node": "Video Quality Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Quality Check": {
+      "main": [
+        [
+          {
+            "node": "Upload Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Post": {
+      "main": [
+        [
+          {
+            "node": "Build Run Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Run Row": {
+      "main": [
+        [
+          {
+            "node": "Log Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Run": {
+      "main": [
+        [
+          {
+            "node": "Compose Run Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Run Notification": {
+      "main": [
+        [
+          {
+            "node": "Telegram Run Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Error Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Config": {
+      "main": [
+        [
+          {
+            "node": "Compose Error Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Error Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Error Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Row": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f29791b6-c59a-4cb9-ac69-7f1b3e604c6d",
+  "meta": {},
+  "id": "tnw0jpfmimUDQ1JW",
+  "tags": []
+}

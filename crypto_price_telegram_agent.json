@@ -1,0 +1,1046 @@
+{
+  "name": "Crypto price Telegram agent (adapted from n8n community template)",
+  "nodes": [
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger1').first().json.message.chat.id }}",
+        "text": "={{ $json.reply_text }}",
+        "additionalFields": {}
+      },
+      "id": "4fabe89b-c6cd-4a4e-a4a7-ebff26abde1d",
+      "name": "Telegram Send Message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1540,
+        0
+      ],
+      "webhookId": "0eeae020-ed6f-4900-ae38-d646d893171d",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "5a658c2f-a033-41cc-a2d7-4c9caa1e8c64",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        760,
+        400
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "ec1fdb47-ac8a-4d2c-86c9-ba104e13f6cf",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        920,
+        400
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "bc7de2ee-11c5-4377-b300-9affdcf06053",
+      "name": "Telegram Trigger1",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        -40,
+        80
+      ],
+      "webhookId": "b33d2025-01c2-4386-b677-206a87a1856b",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "You are a crypto price assistant in a Telegram chat. For ANY question about a cryptocurrency price you MUST call the CoinMarketCap Price tool with the ticker symbol (for example BTC, ETH) and answer using only the tool result. Reply in the user's language in 1-3 short lines, with prices in USD. Never guess or recall prices from memory. If the symbol is unknown or the tool fails, say that you could not fetch the price. For unrelated questions, say that you only answer cryptocurrency price questions.",
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "e624ae6a-6d22-4f53-9848-cf6427cdd521",
+      "name": "CoinMarketCap Price Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        860,
+        80
+      ],
+      "typeVersion": 1.7,
+      "notes": "Error output (2nd) goes to the fallback reply instead of leaving the user without an answer. Retry re-runs the whole agent.",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b5c25cd4-226b-4778-863f-79b13b4a5202",
+              "name": "sessionId",
+              "type": "string",
+              "value": "={{ $json.message.chat.id }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "79f19580-dfcc-4807-b4c2-c654e0e0a366",
+      "name": "Adds SessionId",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        520,
+        80
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "toolDescription": "The tool going to recieve input of cryptocurrency name and then request the price from CoinMarketCap and send the price back in a message.",
+        "url": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            {
+              "name": "symbol"
+            },
+            {
+              "name": "convert",
+              "valueProvider": "fieldValue",
+              "value": "USD"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "Accept",
+              "valueProvider": "fieldValue",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "ea4ab58f-55c6-4952-bcb0-127994aadfad",
+      "name": "CoinMarketCap Price",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "position": [
+        1080,
+        400
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7da301cb-4487-528d-8989-899ce8e9bb27",
+              "name": "telegram_chat_id",
+              "value": "REPLACE_WITH_ADMIN_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "cd1a67f4-c426-5d87-ba6d-3da0e7f3ecf7",
+              "name": "sheet_document_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "19820dcb-e69a-55cb-81f4-81b339315f3b",
+              "name": "sheet_tab_name",
+              "value": "Run Log",
+              "type": "string"
+            },
+            {
+              "id": "9747b9d8-af84-5dce-a646-5677849bbff9",
+              "name": "fallback_message",
+              "value": "Sorry, I couldn't get a reliable price right now. Please try again in a minute.",
+              "type": "string"
+            },
+            {
+              "id": "c4d50a19-937d-50df-900d-9a3793f19364",
+              "name": "require_tool_call_for_prices",
+              "value": "true",
+              "type": "string"
+            },
+            {
+              "id": "a72c9856-cded-596f-b0bb-ffcb1773a928",
+              "name": "max_reply_chars",
+              "value": 3800,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a7878938-ddd0-5257-80d3-7c362fc2f2aa",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        140,
+        80
+      ],
+      "notes": "Settings in one place. telegram_chat_id is the ADMIN chat for alerts, not the end user.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Answer guard: a price in the reply must be backed by a successful CoinMarketCap tool call.\nconst cfg = $('Config').first().json;\nconst out = $input.first().json;\nconst text = String(out.output || '').trim();\nconst steps = Array.isArray(out.intermediateSteps) ? out.intermediateSteps : [];\n\nconst toolSteps = steps.filter((s) => /coinmarketcap/i.test(String((s && s.action && s.action.tool) || '')));\nconst toolOk = toolSteps.some((s) => {\n  const obs = typeof s.observation === 'string' ? s.observation : JSON.stringify(s.observation || '');\n  return obs.length > 0 && !/\"error_code\"\\s*:\\s*[1-9]/.test(obs) && !/^error/i.test(obs.trim());\n});\n\nconst requireTool = String(cfg.require_tool_call_for_prices).toLowerCase() === 'true';\nconst looksLikePrice = /\\d/.test(text);\n\nlet ok = true;\nlet reason = '';\nif (!text) { ok = false; reason = 'empty_answer'; }\nelse if (requireTool && looksLikePrice && !toolOk) { ok = false; reason = 'price_without_successful_tool_call'; }\n\nconst max = Number(cfg.max_reply_chars);\nlet reply = text.length > max ? text.slice(0, max - 1) + '…' : text;\nif (ok && toolOk) reply += `\\n\\nSource: CoinMarketCap, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;\n\nreturn [{ json: { ok, reason, reply_text: reply, tool_called: toolSteps.length > 0, tool_ok: toolOk } }];"
+      },
+      "id": "0a55dffb-9446-577e-a228-d0a1c44e4dc4",
+      "name": "Validate Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        80
+      ],
+      "notes": "Blocks price answers that were not backed by a successful tool call (anti-hallucination).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-answer-ok",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f2f6e2b-6efe-5532-a5ec-ed2940c5331f",
+      "name": "Answer OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8f2c8fc8-ce76-58d6-8896-95b9c210bc6a",
+              "name": "reply_text",
+              "value": "={{ $('Config').first().json.fallback_message }}",
+              "type": "string"
+            },
+            {
+              "id": "fdc66f46-6aff-5091-a2cc-aaf6d72fb426",
+              "name": "reason",
+              "value": "={{ $json.reason || ($json.error ? String($json.error.message || $json.error) : 'agent_error') }}",
+              "type": "string"
+            },
+            {
+              "id": "75b0286a-556b-5a96-a9fb-aff59e321f5d",
+              "name": "tool_called",
+              "value": "={{ $json.tool_called === true ? 'true' : 'false' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "b428c4af-da58-5a20-91fb-af2016d7669e",
+      "name": "Compose Fallback Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1320,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger1').first().json.message.chat.id }}",
+        "text": "={{ $json.reply_text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "dfaeb779-32d0-5079-8668-d153a9878cfe",
+      "name": "Send Fallback Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        320
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram Bot (BotFather token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99b3217e-ac32-54f6-ab08-23e4107375f5",
+              "name": "text",
+              "value": "={{ `⚠️ Crypto bot fallback (chat ${$('Telegram Trigger1').first().json.message.chat.id}): ${$('Compose Fallback Message').first().json.reason}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "476f91d8-3051-5e51-9fda-c4f5b0b7cd8f",
+      "name": "Compose Admin Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Config').first().json.telegram_chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "e963ef05-cfc5-53d0-ba3a-a659480f5702",
+      "name": "Notify Admin",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1980,
+        320
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram Bot (BotFather token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6bc715b8-06da-5f78-8203-de52a42aaeea",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "8b125637-da04-597b-9c56-ceeefca47d3e",
+              "name": "workflow",
+              "value": "crypto_price_telegram_agent",
+              "type": "string"
+            },
+            {
+              "id": "061bc639-290d-5b03-bb8d-867ab0959647",
+              "name": "run_status",
+              "value": "ok",
+              "type": "string"
+            },
+            {
+              "id": "8ccd3702-320a-5ebc-8741-3400536c1bc7",
+              "name": "chat_id",
+              "value": "={{ String($('Telegram Trigger1').first().json.message.chat.id) }}",
+              "type": "string"
+            },
+            {
+              "id": "303dd814-6d07-55eb-9721-ac2070e6dca1",
+              "name": "user_message",
+              "value": "={{ String($('Telegram Trigger1').first().json.message.text || '').slice(0, 200) }}",
+              "type": "string"
+            },
+            {
+              "id": "4900a246-3c6e-52a4-b9f1-ca289c5fb5dc",
+              "name": "reply_preview",
+              "value": "={{ String($('Validate Answer').first().json.reply_text).slice(0, 200) }}",
+              "type": "string"
+            },
+            {
+              "id": "955c4dc4-3f20-581e-9a81-9069e6ea8f76",
+              "name": "tool_called",
+              "value": "={{ String($('Validate Answer').first().json.tool_called) }}",
+              "type": "string"
+            },
+            {
+              "id": "25438cfa-9a34-5760-a7aa-1953f4c0e6ce",
+              "name": "reason",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "a4becf20-3a43-572c-9a2f-6a3b01d2b0c1",
+              "name": "execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "ffc69068-6d58-532a-b00e-64da1b0e0083",
+      "name": "Build Log Row OK",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "10d08066-57ed-5773-b495-779e10e3beda",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "f65f3b0f-fdab-5995-8087-1e40e1dd070d",
+              "name": "workflow",
+              "value": "crypto_price_telegram_agent",
+              "type": "string"
+            },
+            {
+              "id": "a8dbb586-68f9-574a-a4a8-0113cd1f72d4",
+              "name": "run_status",
+              "value": "fallback",
+              "type": "string"
+            },
+            {
+              "id": "a0ab7e9e-57d5-50be-83ac-ae750b32d6b4",
+              "name": "chat_id",
+              "value": "={{ String($('Telegram Trigger1').first().json.message.chat.id) }}",
+              "type": "string"
+            },
+            {
+              "id": "2c10d6a8-bd4d-5cc1-bbbc-46cfe26644ef",
+              "name": "user_message",
+              "value": "={{ String($('Telegram Trigger1').first().json.message.text || '').slice(0, 200) }}",
+              "type": "string"
+            },
+            {
+              "id": "81c52aab-64fc-57eb-bd46-87689453006c",
+              "name": "reply_preview",
+              "value": "={{ $('Compose Fallback Message').first().json.reply_text }}",
+              "type": "string"
+            },
+            {
+              "id": "cefde63c-bad9-5cca-8178-9af2580933ed",
+              "name": "tool_called",
+              "value": "={{ $('Compose Fallback Message').first().json.tool_called }}",
+              "type": "string"
+            },
+            {
+              "id": "98666027-e335-550c-bced-308fe62ecc99",
+              "name": "reason",
+              "value": "={{ $('Compose Fallback Message').first().json.reason }}",
+              "type": "string"
+            },
+            {
+              "id": "090c7d78-9c4b-5056-ab91-648c7963c249",
+              "name": "execution_id",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "21b4bea9-204c-5117-aae9-6b0132f8d425",
+      "name": "Build Log Row Fallback",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2200,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_document_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.sheet_tab_name }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "workflow": "={{ $json.workflow }}",
+            "run_status": "={{ $json.run_status }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "user_message": "={{ $json.user_message }}",
+            "reply_preview": "={{ $json.reply_preview }}",
+            "tool_called": "={{ $json.tool_called }}",
+            "reason": "={{ $json.reason }}",
+            "execution_id": "={{ $json.execution_id }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "30be7201-bab5-5859-8c10-6b505c0e3367",
+      "name": "Log Run",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Sheet columns (row 1): timestamp, workflow, run_status, chat_id, user_message, reply_preview, tool_called, reason, execution_id",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "d6f43611-9503-54f3-8b1e-fd4568a564d1",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        760
+      ],
+      "notes": "Fires only if this workflow is set as its own Error Workflow (Settings).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "af4cc5bd-38d0-5188-a397-8ea760df30ba",
+              "name": "telegram_chat_id",
+              "value": "REPLACE_WITH_ADMIN_TELEGRAM_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "7466d52b-36b0-5ce7-bf23-7507f0300b93",
+              "name": "sheet_document_id",
+              "value": "REPLACE_WITH_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "5790a866-5fde-53ec-9944-3e422605b75a",
+              "name": "sheet_tab_name",
+              "value": "Run Log",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "48a65f10-de23-5cbf-8ef4-0d47f1e4a0e8",
+      "name": "Error Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        180,
+        760
+      ],
+      "notes": "Error runs cannot read the main Config node, so these 3 values are mirrored here. Keep them identical to Config.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9e087220-eb6f-5c8e-8a0f-89bb0defbb6b",
+              "name": "text",
+              "value": "={{ `🚨 Crypto price bot failed at node \"${$json.execution.lastNodeExecuted}\": ${String($json.execution.error.message).slice(0, 500)}\\nExecution: ${$json.execution.id}` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "53778ff9-fed6-583d-a4c4-26fdffb405f4",
+      "name": "Compose Error Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Error Config').first().json.telegram_chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "17716b4f-57a3-5c5e-ae5f-deb963adf681",
+      "name": "Telegram Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        620,
+        680
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_ME",
+          "name": "Telegram Bot (BotFather token)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd9d13c1-334e-5e7e-bb72-63bcc1792e30",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "74983e6a-0440-56d4-9598-70667b8f31c5",
+              "name": "workflow",
+              "value": "crypto_price_telegram_agent",
+              "type": "string"
+            },
+            {
+              "id": "1b9ff65c-ce7d-5f5c-a895-0f7b7396d92a",
+              "name": "run_status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "6ab5f2de-0efd-5d23-8630-45c9ba79589b",
+              "name": "chat_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "29899db0-1de8-5308-9e87-b2f219a47e20",
+              "name": "user_message",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "8557475e-55b3-5933-b585-cbeaa6bd2c6a",
+              "name": "reply_preview",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "b49ac3b2-6aae-5225-97e3-9f151150a220",
+              "name": "tool_called",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "df00084d-7196-5b10-a8f0-97fda51de69b",
+              "name": "reason",
+              "value": "={{ String($json.execution.error.message).slice(0, 500) }}",
+              "type": "string"
+            },
+            {
+              "id": "4e3912e3-af20-5c5c-9fe1-f6f3f6abd46d",
+              "name": "execution_id",
+              "value": "={{ $json.execution.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "03b06497-2ca4-521d-bbc9-585c32cae074",
+      "name": "Build Error Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Error Config').first().json.sheet_document_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Error Config').first().json.sheet_tab_name }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "workflow": "={{ $json.workflow }}",
+            "run_status": "={{ $json.run_status }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "user_message": "={{ $json.user_message }}",
+            "reply_preview": "={{ $json.reply_preview }}",
+            "tool_called": "={{ $json.tool_called }}",
+            "reason": "={{ $json.reason }}",
+            "execution_id": "={{ $json.execution_id }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "fbf4c241-a5e6-5005-9de0-25296eb20b7d",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        620,
+        840
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REPLACE_ME",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Sheet columns (row 1): timestamp, workflow, run_status, chat_id, user_message, reply_preview, tool_called, reason, execution_id",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "content": "## What I changed vs. the n8n community template\n1. `Config` node (admin chat, sheet, fallback text, limits).\n2. System prompt: always use the tool, never quote prices from memory.\n3. `Validate Answer`: a reply with a price must be backed by a successful CoinMarketCap tool call, otherwise a safe fallback is sent.\n4. Agent retry + error output -> fallback reply + admin alert (the user never gets silence).\n5. `Log Run` to Google Sheets (note: it stores chat ids and message text, so tell users or anonymize).\n6. Error Trigger -> Telegram + sheet.\n\nFirst run: check that `intermediateSteps` contains the tool call. If every price answer falls back, set `require_tool_call_for_prices` to false and inspect the agent output.",
+        "height": 320,
+        "width": 760,
+        "color": 4
+      },
+      "id": "d923b586-03a5-5594-9041-875b599a5929",
+      "name": "Note 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Adds SessionId": {
+      "main": [
+        [
+          {
+            "node": "CoinMarketCap Price Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "CoinMarketCap Price Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CoinMarketCap Price": {
+      "ai_tool": [
+        [
+          {
+            "node": "CoinMarketCap Price Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "CoinMarketCap Price Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CoinMarketCap Price Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Compose Fallback Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Adds SessionId",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Answer": {
+      "main": [
+        [
+          {
+            "node": "Answer OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer OK?": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Compose Fallback Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Fallback Message": {
+      "main": [
+        [
+          {
+            "node": "Send Fallback Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Fallback Message": {
+      "main": [
+        [
+          {
+            "node": "Compose Admin Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Admin Alert": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Send Message": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Log Row OK": {
+      "main": [
+        [
+          {
+            "node": "Log Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Admin": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Log Row Fallback": {
+      "main": [
+        [
+          {
+            "node": "Log Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Error Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Config": {
+      "main": [
+        [
+          {
+            "node": "Compose Error Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Error Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Error Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Row": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {},
+  "tags": []
+}
